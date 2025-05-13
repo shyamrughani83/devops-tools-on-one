@@ -1,0 +1,33 @@
+server:
+  http_listen_port: 9080  # Port for Promtail's API
+
+positions:
+  filename: /tmp/positions.yaml  # Track last read log position
+
+clients:
+  - url: "http://loki:3100/loki/api/v1/push"  # Loki's endpoint
+
+scrape_configs:
+  - job_name: "docker-logs"
+    docker_sd_configs:
+      - host: "unix:///var/run/docker.sock"  # Read logs from Docker
+
+    relabel_configs:
+      - source_labels: ["__container_name__"]
+        target_label: "container"  # Label for filtering logs by container
+
+    pipeline_stages:
+      - match:
+          selector: '{container="jenkins"}'
+          stages:
+            - regex:
+                expression: '^(?P<jenkins_log>.*)$'
+            - labels:
+                jenkins_log: ""
+      - match:
+          selector: '{container="blackbox-exporter"}'
+          stages:
+            - regex:
+                expression: '^(?P<blackbox_log>.*)$'
+            - labels:
+                blackbox_log: ""
